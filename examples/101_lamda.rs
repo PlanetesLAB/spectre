@@ -5,7 +5,7 @@ use spectre::lamda::LAMDAData;
 
 fn main() -> Result<(), LAMDAError> {
     let molecule = LAMDAData::from_path(
-        "/Users/kmaitreys/Documents/ProsiaLAB/spectre/data/molecule_13co.inp",
+        "/Users/kmaitreys/Documents/PlanetesLAB/spectre/data/molecule_13co.inp",
     )?;
 
     println!("{molecule:?}");
