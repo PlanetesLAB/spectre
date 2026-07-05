@@ -21,4 +21,5 @@ pub mod hitran;
 pub mod io;
 pub mod jpl;
 pub mod lamda;
+pub mod splatalogue;
 // pub mod utils;
