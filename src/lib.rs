@@ -13,6 +13,10 @@
 //! * `spectral_cube` - Likely full-fledged implementation.
 //! * `radio_beam` - Likely full-fledged implementation.
 
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/PlanetesLAB/documentation/refs/heads/main/logo.jpg"
+)]
+
 // pub mod beam;
 pub mod cdms;
 pub mod constants;
