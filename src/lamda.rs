@@ -195,6 +195,14 @@ impl LAMDAData {
                 .ok_or_else(|| LAMDAError::ParseError("Missing energy".into()))?
                 .parse()?;
 
+            if !(1..=level_count).contains(&upper_level)
+                || !(1..=level_count).contains(&lower_level)
+            {
+                return Err(LAMDAError::ParseError(format!(
+                    "radiative transition {id} refers to a level outside 1..={level_count}"
+                )));
+            }
+
             radset.push(RadTransition {
                 id,
                 up: upper_level,
@@ -205,15 +213,14 @@ impl LAMDAData {
             });
         }
 
-        // Number of collisional partners
+        // Number of collisional partners; files with radiative data only end here.
         skip_line(&mut reader, &mut buf)?;
         buf.clear();
-        if reader.read_line(&mut buf)? == 0 {
-            return Err(LAMDAError::ParseError(
-                "Missing collisional partner count".into(),
-            ));
-        }
-        let colli_partner_count: usize = buf.trim().parse()?;
+        let colli_partner_count: usize = if reader.read_line(&mut buf)? == 0 {
+            0
+        } else {
+            buf.trim().parse()?
+        };
 
         let mut collsets = HashMap::new();
 
@@ -252,19 +259,27 @@ impl LAMDAData {
             skip_line(&mut reader, &mut buf)?; // skip unused line
             buf.clear();
             reader.read_line(&mut buf)?;
-            let _colli_temp_count: usize = buf.trim().parse()?;
+            let colli_temp_count: usize = buf.trim().parse()?;
 
             // Collisional temperatures
             skip_line(&mut reader, &mut buf)?; // skip unused line
             buf.clear();
             reader.read_line(&mut buf)?;
+            // As many temperatures and rates as declared; any further values are ignored.
             let temps: Vec<f64> = buf
                 .split_whitespace()
+                .take(colli_temp_count)
                 .map(|x| {
                     x.parse::<f64>()
                         .map_err(|e| LAMDAError::ParseError(e.to_string()))
                 })
                 .collect::<Result<_, _>>()?;
+            if temps.len() < colli_temp_count {
+                return Err(LAMDAError::ParseError(format!(
+                    "{partner_name}: {} temperatures listed, {colli_temp_count} declared",
+                    temps.len()
+                )));
+            }
 
             let mut coll_transitions = Vec::with_capacity(colli_transition_count);
 
@@ -288,10 +303,26 @@ impl LAMDAData {
                     .ok_or_else(|| LAMDAError::ParseError("missing low".into()))?
                     .parse()?;
 
+                if !(1..=level_count).contains(&up) || !(1..=level_count).contains(&low) {
+                    return Err(LAMDAError::ParseError(format!(
+                        "{partner_name}: collisional transition {id} refers to a level outside 1..={level_count}"
+                    )));
+                }
+                let rates: Vec<&str> = fields
+                    .take_while(|s| !s.starts_with('!'))
+                    .take(temps.len())
+                    .collect();
+                if rates.len() < temps.len() {
+                    return Err(LAMDAError::ParseError(format!(
+                        "{partner_name}: collisional transition {id} has {} rates for {} temperatures",
+                        rates.len(),
+                        temps.len()
+                    )));
+                }
                 let mut coll_rates = Vec::with_capacity(temps.len());
-                for (i, rate_str) in fields.enumerate() {
+                for (&temp, rate_str) in temps.iter().zip(rates) {
                     coll_rates.push(CollRate {
-                        temp: temps[i],
+                        temp,
                         rate: rate_str.parse()?,
                     });
                 }
@@ -305,13 +336,18 @@ impl LAMDAData {
                 });
             }
 
-            collsets.insert(
+            let previous = collsets.insert(
                 partner_name.to_string(),
                 CollSet {
                     temps,
                     coll_transitions,
                 },
             );
+            if previous.is_some() {
+                return Err(LAMDAError::ParseError(format!(
+                    "collision partner {partner_name} listed twice"
+                )));
+            }
         }
 
         Ok(Self {
