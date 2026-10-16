@@ -19,6 +19,8 @@ pub struct Level {
     pub weight: f64,
     /// Total angular momentum quantum number of the level.
     pub j: usize,
+    /// Quantum numbers of the level as written in the file, without quotes.
+    pub label: String,
 }
 
 #[derive(Debug, Clone)]
@@ -126,13 +128,21 @@ impl LAMDAData {
                 .next()
                 .ok_or_else(|| LAMDAError::ParseError("Missing level weight".into()))?
                 .parse()?;
-            let j = fields.next().map_or(0, |s| s.parse().unwrap_or(0));
+            let rest: Vec<&str> = fields.take_while(|s| !s.starts_with('!')).collect();
+            let j = rest.first().map_or(0, |s| s.parse().unwrap_or(0));
+            let label = rest
+                .join(" ")
+                .replace(['\'', '"'], " ")
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ");
 
             levels.push(Level {
                 id,
                 energy,
                 weight,
                 j,
+                label,
             });
         }
 
