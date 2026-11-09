@@ -25,5 +25,6 @@ pub mod hitran;
 pub mod io;
 pub mod jpl;
 pub mod lamda;
+#[cfg(feature = "splatalogue")]
 pub mod splatalogue;
 // pub mod utils;

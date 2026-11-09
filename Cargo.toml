@@ -1,9 +1,13 @@
 [package]
 name = "spectre"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2024"
 
 [dependencies]
-reqwest = "0.13.5"
+reqwest = { version = "0.13.5", optional = true }
 thiserror = "2.0.21"
-url = "2.5.8"
+url = { version = "2.5.8", optional = true }
+
+[features]
+# The Splatalogue client, with its HTTP dependencies.
+splatalogue = ["dep:reqwest", "dep:url"]
